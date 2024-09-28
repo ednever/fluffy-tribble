@@ -44,14 +44,26 @@ function createDashboard() {
 
         displayResults(`Otsing URL-i järgi: ${searchInputValue}`);
 
-        // Tulemuste simuleerimine testimiseks
-        setTimeout(() => {
-            displayResults([
-                { name: 'Toode 1', price: '$50' },
-                { name: 'Toode 2', price: '$30' },
-                { name: 'Toode 3', price: '$20' }
-            ]);
-        }, 2000);
+        // Päringu saatmine PHP API-le
+        fetch('crawler.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: searchInputValue }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    displayResults(data.categories);
+                } else {
+                    displayResults(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Viga:', error);
+                displayResults('Veebisaidi analüüsimisel tekkis viga.');
+            });
     });
 }
 
@@ -66,7 +78,7 @@ function displayResults(results) {
         results.forEach(item => {
             const resultItem = document.createElement('div');
             resultItem.classList.add('result-item');
-            resultItem.innerHTML = `<h3>${item.name}</h3><p>${item.price}</p>`;
+            resultItem.innerHTML = `<h3>${item}</h3>`;
             resultsContainer.appendChild(resultItem);
         });
     }
@@ -74,3 +86,4 @@ function displayResults(results) {
 
 // Dashboard'i initsialiseerimine
 createDashboard();
+
