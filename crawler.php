@@ -43,17 +43,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // Otsime toodete hind elementide klassi järgi
+            $productsPrice = [];
+            foreach ($xpath->query("//div[contains(@class, 'price')]") as $element) {
+                $price = trim($element->nodeValue);
+                if (!empty($price) && !in_array($price, $productsPrice)) {
+                    $productsPrice[] = $price;
+                }
+            }
+
+            // Otsime toodete kogus elementide klassi järgi
+            $productsQuantity = [];
+            foreach ($xpath->query("//span[contains(@class, 'counter')]") as $element) {
+                $quantity = trim($element->nodeValue);
+                if (!empty($quantity) && !in_array($quantity, $productsQuantity)) {
+                    $productsQuantity[] = $quantity;
+                }
+            }
+
             // Kontrollime, kas oleme leidnud kategooriad
-            if (!empty($categories) || !empty($products)) {
+            if (!empty($categories) || !empty($products) || !empty($productsPrice) || !empty($productsQuantity)) {
                 echo json_encode([
                     'status' => 'success',
                     'categories' => $categories,
-                    'products' => $products
+                    'products' => $products,
+                    'productsPrice' => $productsPrice,
+                    'productsQuantity' => $productsQuantity
                 ]);
             } else {
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'Ei suutnud leida sellel saidil ühtegi kategooriat või toodet.'
+                    'message' => 'Ei suutnud leida sellel saidil vajalikke elementi.'
                 ]);
             }
         } else {

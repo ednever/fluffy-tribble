@@ -44,12 +44,14 @@ function createDashboard() {
 
         displayResults(`Otsing URL-i järgi: ${searchInputValue}`);
 
-        fetchAPI(searchInputValue);
+        fetchAPI(searchInputValue, null, true);
     });
 }
 
+let toodeteKogus = [];
+
 // Päringu saatmine PHP API-le
-function fetchAPI(url, category = null) {
+function fetchAPI(url, category = null, boolean) {
     let apiUrl = url;
 
     // Kui kategooria on lisatud, lisame see URL-ile (asendades tühikud sidekriipsudega).
@@ -67,8 +69,13 @@ function fetchAPI(url, category = null) {
     })
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                displayResults(data.categories, data.products);
+            if (data.status === 'success' && boolean) {
+                displayResults(data.categories, data.products, data.productsPrice);
+            } else if (data.status === 'success' && !boolean) {
+                if (data.productsQuantity[0]) {
+                    toodeteKogus.push(data.productsQuantity[0]);
+                    displayResults(data.categories, data.products);
+                }
             } else {
                 displayResults(data.message);
             }
@@ -80,7 +87,7 @@ function fetchAPI(url, category = null) {
 }
 
 // Tulemuste kuvamise funktsioon
-function displayResults(categories = [], products = []) {
+function displayResults(categories = [], products = [], productsPrice = []) {
     const resultsContainer = document.getElementById('results');
     resultsContainer.innerHTML = ''; // Vanade tulemuste kustutamine
 
@@ -117,7 +124,7 @@ function displayResults(categories = [], products = []) {
             categoryCell.addEventListener('click', () => {
                 const searchInputValue = document.getElementById('searchInput').value;
                 if (searchInputValue.trim() !== '') {
-                    fetchAPI(searchInputValue, item);
+                    fetchAPI(searchInputValue, item, true);
                 } else {
                     alert('Sisestage URL saidi analüüsimiseks.');
                 }
@@ -131,6 +138,103 @@ function displayResults(categories = [], products = []) {
         categoryTable.appendChild(thead);
         categoryTable.appendChild(tbody);
         resultsContainer.appendChild(categoryTable);
+
+        // Nupu lisamine valitud kategooriate API taotlemiseks
+        const button = document.createElement('button');
+        button.innerText = 'Kuva ring diagramm';
+        button.classList.add('api-button');
+        button.addEventListener('click', () => {
+            // Ringdiagramm näidis. Pole jõudnud teha päris andmete kuvamisega
+            /* categories.forEach((item, index) => {
+                const searchInputValue = document.getElementById('searchInput').value;
+                if (searchInputValue.trim() !== '') {
+                    fetchAPI(searchInputValue, item, false);
+                } else {
+                    alert('Sisestage URL saidi analüüsimiseks.');
+                }
+            }); */
+
+            const canvas = document.createElement('canvas');
+            canvas.id = 'pieChart';
+            canvas.width = 300;
+            canvas.height = 300;
+
+            resultsContainer.appendChild(canvas);
+
+            function drawPieChart(data, colors) {
+                const canvas = document.getElementById('pieChart');
+                const ctx = canvas.getContext('2d');
+                const total = data.reduce((acc, value) => acc + value, 0);
+                let startAngle = 0;
+
+                data.forEach((value, index) => {
+                    const sliceAngle = (value / total) * 2 * Math.PI;
+                    ctx.fillStyle = colors[index];
+                    ctx.beginPath();
+                    ctx.moveTo(canvas.width / 2, canvas.height / 2);
+                    ctx.arc(
+                        canvas.width / 2,
+                        canvas.height / 2,
+                        Math.min(canvas.width / 2, canvas.height / 2),
+                        startAngle,
+                        startAngle + sliceAngle
+                    );
+                    ctx.closePath();
+                    ctx.fill();
+                    startAngle += sliceAngle;
+                });
+            }
+
+            /*let data = toodeteKogus.map(item => item.replace(/[()]/g, ''));
+            let colors = [];
+
+            function getRandomColor() {
+                let letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            data.forEach(() => {
+                colors.push(getRandomColor());
+            });*/
+
+            const data = [281, 3489, 2229, 1345, 1406, 1079, 1606, 1497, 1056, 660];
+            const colors = ['#EE07AE', '#E2784D', '#16DEA7', '#44CA94', '#C34804', '#5AED12', '#4D7843', '#EC8094', '#812B1D', '#DCAAA8'];
+            let labels = categories;
+
+            drawPieChart(data, colors);
+
+            function createLegend(labels, colors) {
+                const legendContainer = document.createElement('div');
+                legendContainer.classList.add('legend-container');
+
+                labels.forEach((label, index) => {
+                    const legendItem = document.createElement('div');
+                    legendItem.classList.add('legend-item');
+
+                    const colorBox = document.createElement('span');
+                    colorBox.classList.add('color-box');
+                    colorBox.style.backgroundColor = colors[index];
+
+                    const labelText = document.createElement('span');
+                    labelText.innerText = `${label}: ${data[index]} tk`;
+
+                    legendItem.appendChild(colorBox);
+                    legendItem.appendChild(labelText);
+
+                    legendContainer.appendChild(legendItem);
+                });
+
+                resultsContainer.appendChild(legendContainer);
+            }
+
+            createLegend(labels, colors);
+        });
+
+        resultsContainer.appendChild(button);
     }
 
     // Toodete kuvamine
@@ -145,9 +249,12 @@ function displayResults(categories = [], products = []) {
         orderHeader.innerText = 'Järjestus';
         const productHeader = document.createElement('th');
         productHeader.innerText = 'Tooted';
+        const priceHeader = document.createElement('th');
+        priceHeader.innerText = 'Hind';
 
         headerRow.appendChild(orderHeader);
         headerRow.appendChild(productHeader);
+        headerRow.appendChild(priceHeader);
         thead.appendChild(headerRow);
 
         const tbody = document.createElement('tbody');
@@ -161,8 +268,12 @@ function displayResults(categories = [], products = []) {
             const productCell = document.createElement('td');
             productCell.innerText = item;
 
+            const priceCell = document.createElement('td');
+            priceCell.innerText = productsPrice[index];
+
             row.appendChild(orderCell);
             row.appendChild(productCell);
+            row.appendChild(priceCell);
             tbody.appendChild(row);
         });
 
@@ -170,6 +281,7 @@ function displayResults(categories = [], products = []) {
         productTable.appendChild(tbody);
         resultsContainer.appendChild(productTable);
     }
+
 }
 
 // Dashboard'i initsialiseerimine
