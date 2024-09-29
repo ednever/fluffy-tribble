@@ -1,4 +1,5 @@
 <?php
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -33,16 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
+            // Otsime tooted elementide klassi järgi
+            $products = [];
+            foreach ($xpath->query("//span[contains(@class, 'product-card__title')]") as $element) {
+                $product = trim($element->nodeValue);
+                if (!empty($product) && !in_array($product, $products)) {
+                    $products[] = $product;
+                }
+            }
+
             // Kontrollime, kas oleme leidnud kategooriad
-            if (!empty($categories)) {
+            if (!empty($categories) || !empty($products)) {
                 echo json_encode([
                     'status' => 'success',
-                    'categories' => $categories
+                    'categories' => $categories,
+                    'products' => $products
                 ]);
             } else {
                 echo json_encode([
                     'status' => 'error',
-                    'message' => 'Ei suutnud leida kategooriaid sellel saidil.'
+                    'message' => 'Ei suutnud leida sellel saidil ühtegi kategooriat või toodet.'
                 ]);
             }
         } else {

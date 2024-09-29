@@ -44,43 +44,131 @@ function createDashboard() {
 
         displayResults(`Otsing URL-i järgi: ${searchInputValue}`);
 
-        // Päringu saatmine PHP API-le
-        fetch('crawler.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: searchInputValue }),
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    displayResults(data.categories);
-                } else {
-                    displayResults(data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Viga:', error);
-                displayResults('Veebisaidi analüüsimisel tekkis viga.');
-            });
+        fetchAPI(searchInputValue);
     });
 }
 
+// Päringu saatmine PHP API-le
+function fetchAPI(url, category = null) {
+    let apiUrl = url;
+
+    // Kui kategooria on lisatud, lisame see URL-ile (asendades tühikud sidekriipsudega).
+    if (category) {
+        const formattedCategory = category.replace(/\s+/g, '-');
+        apiUrl += '/' + formattedCategory;
+    }
+
+    fetch('crawler.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: apiUrl }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                displayResults(data.categories, data.products);
+            } else {
+                displayResults(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Viga:', error);
+            displayResults('Veebisaidi analüüsimisel tekkis viga.');
+        });
+}
+
 // Tulemuste kuvamise funktsioon
-function displayResults(results) {
+function displayResults(categories = [], products = []) {
     const resultsContainer = document.getElementById('results');
     resultsContainer.innerHTML = ''; // Vanade tulemuste kustutamine
 
-    if (typeof results === 'string') {
-        resultsContainer.innerHTML = `<p>${results}</p>`;
-    } else if (Array.isArray(results)) {
-        results.forEach(item => {
-            const resultItem = document.createElement('div');
-            resultItem.classList.add('result-item');
-            resultItem.innerHTML = `<h3>${item}</h3>`;
-            resultsContainer.appendChild(resultItem);
+    // Kategooriate kuvamine
+    if (Array.isArray(categories) && categories.length > 0) {
+        const categoryTable = document.createElement('table');
+        categoryTable.classList.add('categories-table');
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+
+        const orderHeader = document.createElement('th');
+        orderHeader.innerText = 'Järjestus';
+        const categoryHeader = document.createElement('th');
+        categoryHeader.innerText = 'Kategooriad';
+
+        headerRow.appendChild(orderHeader);
+        headerRow.appendChild(categoryHeader);
+        thead.appendChild(headerRow);
+
+        const tbody = document.createElement('tbody');
+
+        categories.forEach((item, index) => {
+            const row = document.createElement('tr');
+
+            const orderCell = document.createElement('td');
+            orderCell.innerText = index + 1;
+
+            const categoryCell = document.createElement('td');
+            categoryCell.innerText = item;
+            categoryCell.classList.add('category-item');
+
+            // Kategooria klõpsu sündmuse lisamine
+            categoryCell.addEventListener('click', () => {
+                const searchInputValue = document.getElementById('searchInput').value;
+                if (searchInputValue.trim() !== '') {
+                    fetchAPI(searchInputValue, item);
+                } else {
+                    alert('Sisestage URL saidi analüüsimiseks.');
+                }
+            });
+
+            row.appendChild(orderCell);
+            row.appendChild(categoryCell);
+            tbody.appendChild(row);
         });
+
+        categoryTable.appendChild(thead);
+        categoryTable.appendChild(tbody);
+        resultsContainer.appendChild(categoryTable);
+    }
+
+    // Toodete kuvamine
+    if (Array.isArray(products) && products.length > 0) {
+        const productTable = document.createElement('table');
+        productTable.classList.add('products-table');
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+
+        const orderHeader = document.createElement('th');
+        orderHeader.innerText = 'Järjestus';
+        const productHeader = document.createElement('th');
+        productHeader.innerText = 'Tooted';
+
+        headerRow.appendChild(orderHeader);
+        headerRow.appendChild(productHeader);
+        thead.appendChild(headerRow);
+
+        const tbody = document.createElement('tbody');
+
+        products.forEach((item, index) => {
+            const row = document.createElement('tr');
+
+            const orderCell = document.createElement('td');
+            orderCell.innerText = index + 1;
+
+            const productCell = document.createElement('td');
+            productCell.innerText = item;
+
+            row.appendChild(orderCell);
+            row.appendChild(productCell);
+            tbody.appendChild(row);
+        });
+
+        productTable.appendChild(thead);
+        productTable.appendChild(tbody);
+        resultsContainer.appendChild(productTable);
     }
 }
 
